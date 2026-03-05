@@ -1,0 +1,3 @@
+kiwipiepy
+requests
+python-dotenv

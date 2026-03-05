@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>외래어 표기법 검사기</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F4F1EB;
+      --bg-card: #FEFDFB;
+      --bg-input: #FAF9F6;
+      --accent: #C15F3C;
+      --accent-hover: #A8492A;
+      --accent-light: rgba(193, 95, 60, 0.08);
+      --accent-border: rgba(193, 95, 60, 0.2);
+      --border: #E2DFD8;
+      --text: #2A2520;
+      --text-muted: #8A847A;
+      --text-light: #B1ACA2;
+      --correct: #4A7C59;
+      --correct-bg: rgba(74, 124, 89, 0.06);
+      --warn: #C15F3C;
+      --warn-bg: rgba(193, 95, 60, 0.06);
+      --neutral: #8A847A;
+      --neutral-bg: rgba(138, 132, 122, 0.06);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Newsreader', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* 노이즈 텍스처 */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 80px 24px 120px;
+    }
+
+    /* 헤더 */
+    header {
+      margin-bottom: 56px;
+    }
+
+    header h1 {
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    header p {
+      font-size: 28px;
+      font-weight: 300;
+      line-height: 1.35;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+
+    /* 스텝 라벨 */
+    .step-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: var(--text-light);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* 텍스트 입력 영역 */
+    .input-section {
+      margin-bottom: 48px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 20px 24px;
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 16px;
+      line-height: 1.7;
+      color: var(--text);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+    }
+
+    textarea::placeholder {
+      color: var(--text-light);
+      font-style: italic;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #FFF;
+      margin-top: 16px;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent-border);
+      padding: 8px 16px;
+      font-size: 11px;
+    }
+
+    .btn-ghost:hover {
+      background: var(--accent-light);
+    }
+
+    /* 후보 선택 영역 */
+    .candidates-section {
+      margin-bottom: 48px;
+      display: none;
+    }
+
+    .candidates-section.visible { display: block; }
+
+    .candidate-list {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 8px 0;
+    }
+
+    .candidate-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: background 0.15s;
+      user-select: none;
+    }
+
+    .candidate-item:hover {
+      background: var(--accent-light);
+    }
+
+    .candidate-item input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 2px;
+      margin-right: 14px;
+      flex-shrink: 0;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s;
+    }
+
+    .candidate-item input[type="checkbox"]:checked {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .candidate-item input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 5px;
+      height: 9px;
+      border: solid #FFF;
+      border-width: 0 1.5px 1.5px 0;
+      transform: rotate(45deg);
+    }
+
+    .candidate-item label {
+      font-size: 15px;
+      cursor: pointer;
+      flex: 1;
+    }
+
+    .candidate-actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .add-word-input {
+      flex: 1;
+      min-width: 200px;
+      padding: 8px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: var(--bg-input);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .add-word-input:focus {
+      border-color: var(--accent);
+    }
+
+    .add-word-input::placeholder {
+      color: var(--text-light);
+    }
+
+    .select-controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .select-controls button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .select-controls button:hover {
+      color: var(--accent);
+    }
+
+    /* 결과 영역 */
+    .results-section {
+      display: none;
+    }
+
+    .results-section.visible { display: block; }
+
+    .result-item {
+      padding: 20px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      margin-bottom: 8px;
+      animation: fadeSlideIn 0.3s ease both;
+    }
+
+    .result-item:nth-child(1) { animation-delay: 0.05s; }
+    .result-item:nth-child(2) { animation-delay: 0.1s; }
+    .result-item:nth-child(3) { animation-delay: 0.15s; }
+    .result-item:nth-child(4) { animation-delay: 0.2s; }
+    .result-item:nth-child(5) { animation-delay: 0.25s; }
+    .result-item:nth-child(6) { animation-delay: 0.3s; }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-correct { border-left: 3px solid var(--correct); background: var(--correct-bg); }
+    .result-check { border-left: 3px solid var(--warn); background: var(--warn-bg); }
+    .result-notfound { border-left: 3px solid var(--neutral); background: var(--neutral-bg); }
+
+    .result-word {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .result-status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 2px;
+      margin-bottom: 8px;
+    }
+
+    .status-correct { color: var(--correct); background: rgba(74, 124, 89, 0.1); }
+    .status-check { color: var(--warn); background: rgba(193, 95, 60, 0.1); }
+    .status-notfound { color: var(--neutral); background: rgba(138, 132, 122, 0.1); }
+
+    .result-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .suggestion {
+      padding: 8px 0;
+      border-top: 1px solid var(--border);
+      margin-top: 8px;
+    }
+
+    .suggestion:first-of-type { margin-top: 12px; }
+
+    .suggestion-word {
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    /* 요약 */
+    .summary {
+      margin-top: 32px;
+      padding: 20px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 24px;
+    }
+
+    .summary-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .summary-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .dot-correct { background: var(--correct); }
+    .dot-check { background: var(--warn); }
+    .dot-notfound { background: var(--neutral); }
+
+    /* 로딩 */
+    .loading {
+      display: none;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .loading.visible { display: block; }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* 후보 없음 안내 */
+    .empty-notice {
+      display: none;
+      margin-bottom: 48px;
+    }
+
+    .empty-notice.visible { display: block; }
+
+    .empty-notice-text {
+      padding: 32px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+
+    /* 다시하기 */
+    .reset-btn {
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>외래어 표기법 검사기</h1>
+    <p>텍스트를 붙여넣으면 외래어 후보를 추출하고,<br>국립국어원 용례와 대조합니다.</p>
+  </header>
+
+  <!-- 1단계: 텍스트 입력 -->
+  <section class="input-section" id="inputSection">
+    <div class="step-label">01 텍스트 입력</div>
+    <textarea id="textInput" placeholder="검사할 텍스트를 여기에 붙여넣으세요..."></textarea>
+    <button class="btn btn-primary" id="extractBtn" onclick="extractCandidates()">외래어 후보 추출</button>
+  </section>
+
+  <!-- 후보 없음 안내 -->
+  <div class="empty-notice" id="emptyNotice">
+    <div class="empty-notice-text">
+      추출된 외래어 후보가 없습니다.<br>
+      아래에서 직접 단어를 추가하거나, 다른 텍스트를 입력해 보세요.
+    </div>
+    <div class="candidate-actions">
+      <input type="text" class="add-word-input" id="addWordInputEmpty"
+             placeholder="검사할 단어 직접 입력..."
+             onkeydown="if(event.key==='Enter') addWordFromEmpty()">
+      <button class="btn btn-ghost" onclick="addWordFromEmpty()">추가</button>
+      <button class="btn btn-primary" id="checkBtnEmpty" onclick="checkWordsFromEmpty()" style="margin-top:0">검사 시작</button>
+    </div>
+    <button class="btn btn-ghost reset-btn" onclick="resetAll()">처음부터 다시</button>
+  </div>
+
+  <!-- 2단계: 후보 선택 -->
+  <section class="candidates-section" id="candidatesSection">
+    <div class="step-label">02 검사할 단어 선택</div>
+
+    <div class="select-controls">
+      <button onclick="selectAll()">전체 선택</button>
+      <button onclick="selectNone()">전체 해제</button>
+    </div>
+
+    <div class="candidate-list" id="candidateList"></div>
+
+    <div class="candidate-actions">
+      <input type="text" class="add-word-input" id="addWordInput"
+             placeholder="빠진 단어 직접 추가..."
+             onkeydown="if(event.key==='Enter') addWord()">
+      <button class="btn btn-ghost" onclick="addWord()">추가</button>
+      <button class="btn btn-primary" id="checkBtn" onclick="checkWords()" style="margin-top:0">검사 시작</button>
+    </div>
+  </section>
+
+  <!-- 로딩 -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">국립국어원 용례 검색 중...</div>
+  </div>
+
+  <!-- 3단계: 결과 -->
+  <section class="results-section" id="resultsSection">
+    <div class="step-label">03 검사 결과</div>
+    <div id="resultsList"></div>
+    <div id="summaryBox"></div>
+    <button class="btn btn-ghost reset-btn" onclick="resetAll()">처음부터 다시</button>
+  </section>
+</div>
+
+<script>
+  let candidates = [];
+  let addedWords = [];
+
+  async function extractCandidates() {
+    const text = document.getElementById('textInput').value.trim();
+    if (!text) return;
+
+    const btn = document.getElementById('extractBtn');
+    btn.disabled = true;
+    btn.textContent = '추출 중...';
+
+    try {
+      const resp = await fetch('/api/extract', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text})
+      });
+      const data = await resp.json();
+      candidates = data.candidates;
+      addedWords = [];
+
+      if (candidates.length === 0) {
+        // 후보 없음 → 안내 표시
+        document.getElementById('emptyNotice').classList.add('visible');
+      } else {
+        renderCandidates();
+        document.getElementById('candidatesSection').classList.add('visible');
+      }
+    } catch (e) {
+      alert('추출 중 오류가 발생했어.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '외래어 후보 추출';
+    }
+  }
+
+  function renderCandidates(prevStates) {
+    const list = document.getElementById('candidateList');
+    const all = [...candidates, ...addedWords];
+
+    list.innerHTML = all.map((word, i) => {
+      const isChecked = prevStates ? (prevStates[word] !== false) : true;
+      return `
+      <div class="candidate-item">
+        <input type="checkbox" id="cb${i}" ${isChecked ? 'checked' : ''} onchange="event.stopPropagation()">
+        <label for="cb${i}">${word}${i >= candidates.length ? ' <span style="color:var(--accent);font-size:11px;font-family:JetBrains Mono,monospace;">직접 추가</span>' : ''}</label>
+      </div>`;
+    }).join('');
+
+    // 행 클릭 시 체크박스 토글 (체크박스/라벨 직접 클릭은 제외)
+    list.querySelectorAll('.candidate-item').forEach((item, i) => {
+      item.addEventListener('click', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') return;
+        const cb = document.getElementById('cb' + i);
+        cb.checked = !cb.checked;
+      });
+    });
+  }
+
+  function selectAll() {
+    const all = [...candidates, ...addedWords];
+    all.forEach((_, i) => document.getElementById('cb' + i).checked = true);
+  }
+
+  function selectNone() {
+    const all = [...candidates, ...addedWords];
+    all.forEach((_, i) => document.getElementById('cb' + i).checked = false);
+  }
+
+  function saveCheckStates() {
+    const all = [...candidates, ...addedWords];
+    const states = {};
+    all.forEach((word, i) => {
+      const cb = document.getElementById('cb' + i);
+      if (cb) states[word] = cb.checked;
+    });
+    return states;
+  }
+
+  function addWord() {
+    const input = document.getElementById('addWordInput');
+    const word = input.value.trim();
+    if (!word) return;
+    const states = saveCheckStates();
+    addedWords.push(word);
+    input.value = '';
+    renderCandidates(states);
+  }
+
+  async function checkWords() {
+    const all = [...candidates, ...addedWords];
+    const selected = all.filter((_, i) => document.getElementById('cb' + i).checked);
+
+    if (selected.length === 0) {
+      alert('검사할 단어를 선택해줘.');
+      return;
+    }
+
+    document.getElementById('candidatesSection').classList.remove('visible');
+    document.getElementById('loading').classList.add('visible');
+    document.getElementById('loadingText').textContent =
+      `${selected.length}개 단어 검색 중...`;
+
+    try {
+      const resp = await fetch('/api/check', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({words: selected})
+      });
+      const data = await resp.json();
+      renderResults(data.results);
+    } catch (e) {
+      alert('검사 중 오류가 발생했어.');
+      document.getElementById('candidatesSection').classList.add('visible');
+    } finally {
+      document.getElementById('loading').classList.remove('visible');
+    }
+  }
+
+  function renderResults(results) {
+    const list = document.getElementById('resultsList');
+    let correct = 0, check = 0, notfound = 0;
+
+    const html = results.map(r => {
+      if (r.status === 'correct') {
+        correct++;
+        return `
+          <div class="result-item result-correct">
+            <div class="result-word">${r.word}</div>
+            <span class="result-status status-correct">올바른 표기</span>
+            <div class="result-meta">
+              원어 ${r.original || '—'}<br>
+              ${r.country || ''}${r.language ? ' / ' + r.language : ''}${r.category ? ' / ' + r.category : ''}
+            </div>
+          </div>`;
+      } else if (r.status === 'check') {
+        check++;
+        const suggestions = (r.suggestions || []).map(s => `
+          <div class="suggestion">
+            <span class="suggestion-word">${s.korean}</span>
+            <span class="result-meta"> — ${s.original || ''}${s.country ? ', ' + s.country : ''}${s.language ? ' / ' + s.language : ''}</span>
+          </div>`).join('');
+        return `
+          <div class="result-item result-check">
+            <div class="result-word">${r.word}</div>
+            <span class="result-status status-check">확인 필요</span>
+            ${suggestions}
+          </div>`;
+      } else {
+        notfound++;
+        return `
+          <div class="result-item result-notfound">
+            <div class="result-word">${r.word}</div>
+            <span class="result-status status-notfound">용례 없음</span>
+            <div class="result-meta">국립국어원에 등록되지 않은 표기</div>
+          </div>`;
+      }
+    }).join('');
+
+    list.innerHTML = html;
+
+    document.getElementById('summaryBox').innerHTML = `
+      <div class="summary">
+        <div class="summary-item"><div class="summary-dot dot-correct"></div> 올바름 ${correct}</div>
+        <div class="summary-item"><div class="summary-dot dot-check"></div> 확인필요 ${check}</div>
+        <div class="summary-item"><div class="summary-dot dot-notfound"></div> 용례없음 ${notfound}</div>
+      </div>`;
+
+    document.getElementById('resultsSection').classList.add('visible');
+  }
+
+  // 후보 없을 때 직접 추가 기능
+  let emptyAddedWords = [];
+
+  function addWordFromEmpty() {
+    const input = document.getElementById('addWordInputEmpty');
+    const word = input.value.trim();
+    if (!word) return;
+    emptyAddedWords.push(word);
+    input.value = '';
+    input.placeholder = `${emptyAddedWords.length}개 추가됨. 더 추가하거나 검사 시작...`;
+  }
+
+  async function checkWordsFromEmpty() {
+    if (emptyAddedWords.length === 0) {
+      alert('검사할 단어를 추가해줘.');
+      return;
+    }
+
+    document.getElementById('emptyNotice').classList.remove('visible');
+    document.getElementById('loading').classList.add('visible');
+    document.getElementById('loadingText').textContent =
+      `${emptyAddedWords.length}개 단어 검색 중...`;
+
+    try {
+      const resp = await fetch('/api/check', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({words: emptyAddedWords})
+      });
+      const data = await resp.json();
+      renderResults(data.results);
+    } catch (e) {
+      alert('검사 중 오류가 발생했어.');
+      document.getElementById('emptyNotice').classList.add('visible');
+    } finally {
+      document.getElementById('loading').classList.remove('visible');
+    }
+  }
+
+  function resetAll() {
+    document.getElementById('resultsSection').classList.remove('visible');
+    document.getElementById('candidatesSection').classList.remove('visible');
+    document.getElementById('emptyNotice').classList.remove('visible');
+    document.getElementById('textInput').value = '';
+    document.getElementById('resultsList').innerHTML = '';
+    document.getElementById('summaryBox').innerHTML = '';
+    candidates = [];
+    addedWords = [];
+    emptyAddedWords = [];
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+</script>
+
+</body>
+</html>
