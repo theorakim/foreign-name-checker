@@ -32,6 +32,7 @@ _COMMON_KOREAN = {
     "열쇠", "온몸", "쾌감", "고통", "직조", "보풀", "주렴", "감상",
     "체화", "함의", "이해", "조율", "형식", "정수", "사실", "수용",
     "고유", "운동", "제안", "후자", "안다", "로저", "아르",
+    "아우르", "패턴", "미학적",
     # 외래어 패턴에 걸리지만 한국어인 단어
     "포함", "토대", "토론", "투자", "태도", "파악", "파괴", "판단",
     "폭력", "피해", "학교", "학생", "탄생", "태양", "특히", "통해",
@@ -52,7 +53,6 @@ def _has_foreign_pattern(word):
     """외래어에서 흔한 패턴이 있는지 체크"""
     foreign_end = set('크트프스즈드그브흐')
     aspirated = set('카타파키티피쿠투푸코토포케테페캐태패')
-    # 외래어에서 흔한 음절들
     foreign_syllables = set('핸폰브젝션웨워랜렌런벨젤맨톤넷벳펀')
     if word[-1] in foreign_end:
         return True
@@ -60,10 +60,28 @@ def _has_foreign_pattern(word):
         return True
     if '르' in word or '슈' in word or '츠' in word or '오브' in word:
         return True
-    # 외래어 음절이 2개 이상이면 외래어로 판단
     if sum(1 for ch in word if ch in foreign_syllables) >= 2:
         return True
     return False
+
+
+def _has_strong_foreign_pattern(word):
+    """외래어일 가능성이 높은 강한 패턴 체크 (비엔날레, 아르세날레 등)"""
+    strong_patterns = [
+        '날레', '나레', '셋날', '엔날', '스터', '슈타', '르투',
+        '비엔', '갈레', '르셋', '르세',
+    ]
+    if any(p in word for p in strong_patterns):
+        return True
+    foreign_end = set('크트프스즈드그브흐')
+    aspirated = set('카타파키티피쿠투푸코토포케테페캐태패')
+    score = 0
+    if word[-1] in foreign_end:
+        score += 2
+    score += sum(1 for ch in word if ch in aspirated)
+    if '르' in word or '슈' in word or '츠' in word:
+        score += 1
+    return score >= 3
 
 
 def _trim_prefix(name):
@@ -79,6 +97,15 @@ def _trim_prefix(name):
     return " ".join(parts)
 
 
+def _is_likely_korean_phrase(text):
+    """NNP 체인이 실제로는 한국어 일반 문구인지 판별한다."""
+    words = text.split()
+    if len(words) <= 2:
+        return False
+    common_count = sum(1 for w in words if w in _COMMON_KOREAN or len(w) == 1)
+    return common_count >= len(words) // 2
+
+
 def extract_candidates(text):
     """텍스트에서 외래어 후보를 추출한다."""
     candidates = set()
@@ -87,6 +114,18 @@ def extract_candidates(text):
     paren_pattern = re.compile(r'([가-힣]+(?:\s[가-힣]+){0,3})\s*\(([A-Za-z][\w\s\.\-\']+)\)')
     for match in paren_pattern.finditer(text):
         korean_name = _trim_prefix(match.group(1).strip())
+        # 일반 한국어 구절이 딸려온 경우 필터링
+        words = korean_name.split()
+        # 뒤에서부터 외래어 패턴이 있는 단어만 취한다
+        foreign_words = []
+        for w in reversed(words):
+            if w in _COMMON_KOREAN or (not _has_foreign_pattern(w) and len(w) <= 2):
+                break
+            foreign_words.insert(0, w)
+        if foreign_words:
+            korean_name = " ".join(foreign_words)
+        else:
+            continue  # 외래어 부분이 없으면 스킵
         if len(korean_name.replace(" ", "")) >= 2:
             candidates.add(korean_name)
 
@@ -117,7 +156,8 @@ def extract_candidates(text):
             i = j
             clean = merged.replace(" ", "")
             if len(clean) >= 2 and all('가' <= ch <= '힣' for ch in clean):
-                candidates.add(merged)
+                if not _is_likely_korean_phrase(merged):
+                    candidates.add(merged)
         else:
             i += 1
 
@@ -137,6 +177,15 @@ def extract_candidates(text):
         if len(stripped) >= 3 and stripped != raw_word and _has_foreign_pattern(stripped):
             candidates.add(stripped)
 
+    # 원문에서 직접 외래어 패턴 단어 추출 (형태소 분석기가 잘못 쪼갠 경우 대비)
+    # 공백으로 나뉜 어절 단위로 체크
+    for raw_word in re.findall(r'[가-힣]{3,}', text):
+        stripped = josa_pattern.sub('', raw_word)
+        if len(stripped) >= 3 and stripped not in _COMMON_KOREAN:
+            # 외래어 특유 패턴이 강하게 나타나는 경우
+            if _has_strong_foreign_pattern(stripped):
+                candidates.add(stripped)
+
     # 필터링
     filtered = []
     for c in sorted(candidates):
@@ -147,22 +196,25 @@ def extract_candidates(text):
             continue
         filtered.append(c)
 
-    # 중복 제거: 짧은 후보가 긴 후보에 포함되면 긴 쪽 제거
-    deduped = []
+    # 중복 제거: 서브셋 관계인 후보 쌍에서 하나만 남김
+    # 긴 후보가 모두 외래어로 보이면 긴 쪽을 남기고 (이름 전체 보존)
+    # 긴 후보에 일반 한국어가 섞여있으면 짧은 쪽을 남김
+    to_remove = set()
     for i, a in enumerate(filtered):
         a_clean = a.replace(" ", "")
-        is_superset = False
         for j, b in enumerate(filtered):
-            if i == j:
+            if i == j or i in to_remove or j in to_remove:
                 continue
             b_clean = b.replace(" ", "")
-            # a가 b를 포함하고 a가 더 길면 → a는 중복 (b만 남김)
             if b_clean in a_clean and len(a_clean) > len(b_clean):
-                is_superset = True
-                break
-        if not is_superset:
-            deduped.append(a)
+                # a가 b를 포함하고 a가 더 긴 경우
+                a_has_korean = any(w in _COMMON_KOREAN for w in a.split())
+                if a_has_korean:
+                    to_remove.add(i)  # 긴 쪽에 한국어 섞임 → 긴 쪽 제거
+                else:
+                    to_remove.add(j)  # 긴 쪽이 전부 외래어 → 짧은 쪽 제거
 
+    deduped = [f for i, f in enumerate(filtered) if i not in to_remove]
     return deduped
 
 
@@ -197,15 +249,88 @@ def parse_items(data):
         return []
 
 
+# 외래어 오타에서 자주 혼동되는 글자 쌍
+_CONFUSABLE_PAIRS = [
+    ('샵', '숍'), ('숍', '샵'),
+    ('칼', '갈'), ('갈', '칼'),
+    ('셋', '세'), ('세', '셋'),
+    ('쉬', '슈'), ('슈', '쉬'),
+    ('씨', '시'), ('시', '씨'),
+    ('빠', '파'), ('파', '빠'),
+    ('까', '카'), ('카', '까'),
+    ('따', '타'), ('타', '따'),
+    ('뻬', '페'), ('페', '뻬'),
+    ('쩨', '체'), ('체', '쩨'),
+    ('렌', '런'), ('런', '렌'),
+    ('벨', '밸'), ('밸', '벨'),
+    ('보', '보'), ('워', '위'), ('위', '워'),
+    ('왜', '웨'), ('웨', '왜'),
+    ('애', '에'), ('에', '애'),
+    ('오', '어'), ('어', '오'),
+]
+
+
+def _generate_variants(word):
+    """흔한 외래어 오타 패턴으로 변형본을 생성한다. 최대 5개."""
+    variants = set()
+    for old, new in _CONFUSABLE_PAIRS:
+        if old in word:
+            variants.add(word.replace(old, new, 1))
+    # 길이 가까운 것 우선 (원본과 거리가 가까울수록 좋음)
+    return sorted(variants, key=lambda v: levenshtein(word, v))[:5]
+
+
+def levenshtein(s1, s2):
+    """두 문자열의 편집 거리를 계산한다. (표준 DP 구현)"""
+    if len(s1) < len(s2):
+        return levenshtein(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    prev_row = list(range(len(s2) + 1))
+    for i, c1 in enumerate(s1):
+        curr_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            # 삽입, 삭제, 치환 중 최소 비용
+            insertions = prev_row[j + 1] + 1
+            deletions = curr_row[j] + 1
+            substitutions = prev_row[j] + (c1 != c2)
+            curr_row.append(min(insertions, deletions, substitutions))
+        prev_row = curr_row
+    return prev_row[-1]
+
+
+def find_typo_candidates(word, custom_dict, max_distance=2):
+    """자체 사전에서 오타 후보를 찾는다."""
+    candidates = []
+    for dict_key, dict_val in custom_dict.items():
+        dist = levenshtein(word, dict_key)
+        if 0 < dist <= max_distance:
+            candidates.append({
+                "word": dict_val if dict_val != dict_key else dict_key,
+                "distance": dist,
+                "source": "자체 사전"
+            })
+    # 거리순 정렬, 최대 3개
+    return sorted(candidates, key=lambda x: x["distance"])[:3]
+
+
 def is_similar(w1, w2):
-    """유사도 판별"""
+    """유사도 판별 — like 검색 결과 필터용"""
+    if w1 == w2:
+        return True
     if w1 in w2 or w2 in w1:
         return True
+    # 편집 거리 1~2면 유사
+    dist = levenshtein(w1, w2)
+    if dist <= 2:
+        return True
+    # 앞 2글자 일치
     if len(w1) >= 2 and len(w2) >= 2 and w1[:2] == w2[:2]:
         return True
+    # 길이 비슷하고 글자 절반 이상 겹침
     if abs(len(w1) - len(w2)) <= 2:
         common = sum(1 for ch in w1 if ch in w2)
-        if common / max(len(w1), len(w2)) >= 0.5:
+        if common / max(len(w1), len(w2)) >= 0.4:
             return True
     return False
 
@@ -224,11 +349,28 @@ def is_chinese(item):
     return False
 
 
-def check_word(word):
+def check_word(word, custom_dict=None):
     """단어 하나를 검사해서 결과를 반환한다."""
     clean = word.replace(" ", "")
 
-    # 1차: 정확히 일치
+    # 자체 사전 검사 (custom_dict가 있을 때만)
+    if custom_dict:
+        # 정확 일치: 키에 해당하면 바로 반환
+        if clean in custom_dict:
+            val = custom_dict[clean]
+            if val == clean:
+                # 올바른 표기 확인
+                return {"word": word, "status": "custom_correct", "source": "자체 사전"}
+            else:
+                # 교정 필요
+                return {"word": word, "status": "custom_fix", "correction": val, "source": "자체 사전"}
+
+        # 오타 매칭: 편집 거리 1~2인 후보 탐색
+        typo_hits = find_typo_candidates(clean, custom_dict)
+        if typo_hits:
+            return {"word": word, "status": "typo_candidate", "similar": typo_hits}
+
+    # 국립국어원 API 검색 — 1차: 정확히 일치
     data = search_kornorms(clean, "equal")
     items = parse_items(data)
 
@@ -248,7 +390,7 @@ def check_word(word):
 
     time.sleep(0.15)
 
-    # 2차: 부분 일치
+    # 2차: 부분 일치 (like 검색)
     data = search_kornorms(clean, "like")
     items = parse_items(data)
 
@@ -256,21 +398,84 @@ def check_word(word):
         relevant = []
         for item in items:
             korean = item.get("korean_mark", "").strip()
-            if korean and is_similar(clean, korean) and not is_chinese(item):
+            if not korean or is_chinese(item):
+                continue
+            # like 결과 중 정확 일치가 있으면 correct 처리
+            if korean == clean:
+                return {
+                    "word": word,
+                    "status": "correct",
+                    "korean": korean,
+                    "original": item.get("srclang_mark", ""),
+                    "country": item.get("guk_nm", ""),
+                    "language": item.get("lang_nm", ""),
+                    "category": item.get("foreign_gubun", ""),
+                }
+            if is_similar(clean, korean):
+                dist = levenshtein(clean, korean)
                 relevant.append({
                     "korean": korean,
                     "original": item.get("srclang_mark", ""),
                     "country": item.get("guk_nm", ""),
                     "language": item.get("lang_nm", ""),
                     "category": item.get("foreign_gubun", ""),
+                    "distance": dist,
                 })
 
         if relevant:
+            # 편집 거리순 정렬
+            relevant.sort(key=lambda x: x.get("distance", 99))
             return {
                 "word": word,
                 "status": "check",
                 "suggestions": relevant[:3],
             }
+
+    # 3차: 흔한 외래어 오타 패턴으로 변형본을 만들어서 재검색
+    # "커피샵"→"커피숍", "포르투칼"→"포르투갈" 등
+    variants = _generate_variants(clean)
+    for idx, variant in enumerate(variants):
+        if idx >= 3:
+            break  # API 호출 제한
+        time.sleep(0.15)
+        data = search_kornorms(variant, "equal")
+        items = parse_items(data)
+        if items:
+            for item in items:
+                korean = item.get("korean_mark", "").strip()
+                guk = item.get("guk_nm", "") or ""
+                # korean_mark 일치 (일반 단어)
+                if korean == variant and not is_chinese(item):
+                    return {
+                        "word": word,
+                        "status": "check",
+                        "suggestions": [{
+                            "korean": korean,
+                            "original": item.get("srclang_mark", ""),
+                            "country": guk,
+                            "language": item.get("lang_nm", ""),
+                            "category": item.get("foreign_gubun", ""),
+                            "distance": levenshtein(clean, korean),
+                        }],
+                    }
+                # guk_nm 일치 (국가/지역명이 변형본과 같으면 국가명 오타)
+                if guk == variant:
+                    return {
+                        "word": word,
+                        "status": "check",
+                        "suggestions": [{
+                            "korean": variant,
+                            "original": guk,
+                            "country": "",
+                            "language": "",
+                            "category": "국가/지역명",
+                            "distance": levenshtein(clean, variant),
+                        }],
+                    }
+
+    # API 키가 없으면 구분해서 알려줌
+    if not API_KEY:
+        return {"word": word, "status": "no_api_key"}
 
     return {"word": word, "status": "not_found"}
 
@@ -294,6 +499,7 @@ def api_extract():
 def api_check():
     """선택된 단어들을 검사"""
     words = request.json.get("words", [])
+    custom_dict = request.json.get("custom_dict", {})
     results = []
     checked = set()
     for word in words:
@@ -301,11 +507,12 @@ def api_check():
         if clean in checked:
             continue
         checked.add(clean)
-        result = check_word(word)
+        result = check_word(word, custom_dict if custom_dict else None)
         results.append(result)
         time.sleep(0.15)
     return jsonify({"results": results})
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    port = int(os.getenv("PORT", 5001))
+    app.run(debug=os.getenv("FLASK_DEBUG", "false").lower() == "true", host="0.0.0.0", port=port)

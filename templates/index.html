@@ -25,6 +25,12 @@
       --warn-bg: rgba(193, 95, 60, 0.06);
       --neutral: #8A847A;
       --neutral-bg: rgba(138, 132, 122, 0.06);
+      /* 자체 사전 관련 색상 */
+      --custom: #5B7BA5;
+      --custom-bg: rgba(91, 123, 165, 0.06);
+      /* 오타 의심 색상 */
+      --typo: #B54A4A;
+      --typo-bg: rgba(181, 74, 74, 0.06);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -97,6 +103,245 @@
       background: var(--border);
     }
 
+    /* 사전 패널 토글 바 */
+    .dict-toggle {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: var(--custom);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .dict-toggle::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .dict-toggle-arrow {
+      transition: transform 0.2s;
+      font-size: 10px;
+    }
+
+    .dict-toggle.open .dict-toggle-arrow {
+      transform: rotate(90deg);
+    }
+
+    .dict-toggle .dict-count {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    /* 사전 패널 */
+    .dict-section {
+      margin-bottom: 48px;
+    }
+
+    .dict-panel {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 20px 24px;
+    }
+
+    .dict-panel.open {
+      display: block;
+      animation: fadeSlideIn 0.2s ease both;
+    }
+
+    /* 파일 업로드 영역 */
+    .dict-upload {
+      border: 1.5px dashed var(--border);
+      border-radius: 2px;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 16px;
+      transition: border-color 0.2s, background 0.2s;
+      cursor: pointer;
+    }
+
+    .dict-upload.dragover {
+      border-color: var(--custom);
+      background: var(--custom-bg);
+    }
+
+    .dict-upload-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .dict-upload-text strong {
+      color: var(--custom);
+      cursor: pointer;
+    }
+
+    .dict-upload-hint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text-light);
+      margin-top: 6px;
+    }
+
+    /* 직접 입력 영역 */
+    .dict-add-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .dict-add-row input {
+      flex: 1;
+      padding: 8px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: var(--bg-input);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .dict-add-row input:focus {
+      border-color: var(--custom);
+    }
+
+    .dict-add-row input::placeholder {
+      color: var(--text-light);
+    }
+
+    .dict-add-row .dict-arrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--text-light);
+      flex-shrink: 0;
+    }
+
+    /* 사전 항목 리스트 */
+    .dict-list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .dict-list-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .dict-list-label:hover {
+      color: var(--custom);
+    }
+
+    .dict-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-dict {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-dict:hover {
+      border-color: var(--custom);
+      color: var(--custom);
+    }
+
+    .btn-dict-danger:hover {
+      border-color: var(--typo);
+      color: var(--typo);
+    }
+
+    .dict-entries {
+      display: none;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .dict-entries.open {
+      display: block;
+    }
+
+    .dict-entry {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dict-entry:last-child {
+      border-bottom: none;
+    }
+
+    .dict-entry-key {
+      color: var(--text-muted);
+      min-width: 100px;
+    }
+
+    .dict-entry-arrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-light);
+      margin: 0 12px;
+    }
+
+    .dict-entry-value {
+      flex: 1;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .dict-entry-del {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--text-light);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+
+    .dict-entry-del:hover {
+      color: var(--typo);
+    }
+
     /* 텍스트 입력 영역 */
     .input-section {
       margin-bottom: 48px;
@@ -144,7 +389,7 @@
 
     .btn-primary {
       background: var(--accent);
-      color: #FFF;
+      color: #FEFDFB;
       margin-top: 16px;
     }
 
@@ -221,7 +466,7 @@
       top: 1px;
       width: 5px;
       height: 9px;
-      border: solid #FFF;
+      border: solid #FEFDFB;
       border-width: 0 1.5px 1.5px 0;
       transform: rotate(45deg);
     }
@@ -314,6 +559,20 @@
     .result-correct { border-left: 3px solid var(--correct); background: var(--correct-bg); }
     .result-check { border-left: 3px solid var(--warn); background: var(--warn-bg); }
     .result-notfound { border-left: 3px solid var(--neutral); background: var(--neutral-bg); }
+    .result-custom-correct { border-left: 3px solid var(--custom); background: var(--custom-bg); }
+    .result-custom-fix { border-left: 3px solid var(--warn); background: var(--custom-bg); }
+    .result-typo { border-left: 3px solid var(--typo); background: var(--typo-bg); }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .result-header-left {
+      flex: 1;
+    }
 
     .result-word {
       font-size: 18px;
@@ -335,6 +594,37 @@
     .status-correct { color: var(--correct); background: rgba(74, 124, 89, 0.1); }
     .status-check { color: var(--warn); background: rgba(193, 95, 60, 0.1); }
     .status-notfound { color: var(--neutral); background: rgba(138, 132, 122, 0.1); }
+    .status-custom { color: var(--custom); background: rgba(91, 123, 165, 0.1); }
+    .status-typo { color: var(--typo); background: rgba(181, 74, 74, 0.1); }
+
+    /* 사전 추가 버튼 (결과 항목 내) */
+    .btn-add-dict {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--custom);
+      background: none;
+      border: 1px solid rgba(91, 123, 165, 0.3);
+      border-radius: 2px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+      align-self: flex-start;
+      margin-top: 2px;
+    }
+
+    .btn-add-dict:hover {
+      background: var(--custom-bg);
+      border-color: var(--custom);
+    }
+
+    .btn-add-dict.added {
+      color: var(--text-light);
+      border-color: var(--border);
+      cursor: default;
+    }
 
     .result-meta {
       font-family: 'JetBrains Mono', monospace;
@@ -356,6 +646,15 @@
       color: var(--accent);
     }
 
+    .typo-similar {
+      font-weight: 600;
+      color: var(--typo);
+    }
+
+    .result-typo .suggestion {
+      border-top-color: rgba(181, 74, 74, 0.15);
+    }
+
     /* 요약 */
     .summary {
       margin-top: 32px;
@@ -368,6 +667,7 @@
       color: var(--text-muted);
       display: flex;
       gap: 24px;
+      flex-wrap: wrap;
     }
 
     .summary-item {
@@ -385,6 +685,8 @@
     .dot-correct { background: var(--correct); }
     .dot-check { background: var(--warn); }
     .dot-notfound { background: var(--neutral); }
+    .dot-custom { background: var(--custom); }
+    .dot-typo { background: var(--typo); }
 
     /* 로딩 */
     .loading {
@@ -446,8 +748,49 @@
 <div class="container">
   <header>
     <h1>외래어 표기법 검사기</h1>
-    <p>텍스트를 붙여넣으면 외래어 후보를 추출하고,<br>국립국어원 용례와 대조합니다.</p>
+    <p>텍스트를 붙여넣으면 외래어 후보를 추출하고,<br>자체 사전과 국립국어원 용례로 표기를 검사합니다.</p>
   </header>
+
+  <!-- 자체 사전 패널 -->
+  <section class="dict-section">
+    <div class="dict-toggle" id="dictToggle" onclick="toggleDictPanel()">
+      <span class="dict-toggle-arrow">&#9654;</span>
+      자체 사전
+      <span class="dict-count" id="dictCountLabel">(0개)</span>
+    </div>
+    <div class="dict-panel" id="dictPanel">
+      <!-- 파일 업로드 -->
+      <div class="dict-upload" id="dictUploadArea">
+        <input type="file" id="dictFileInput" accept=".csv,.json" style="display:none">
+        <div class="dict-upload-text">
+          CSV 또는 JSON 파일을 여기에 드래그하거나 <strong onclick="document.getElementById('dictFileInput').click()">파일 선택</strong>
+        </div>
+        <div class="dict-upload-hint">CSV: 틀린표기,올바른표기 / JSON: {"틀린표기": "올바른표기"}</div>
+      </div>
+
+      <!-- 직접 입력 -->
+      <div class="dict-add-row">
+        <input type="text" id="dictKeyInput" placeholder="틀린 표기"
+               onkeydown="if(event.key==='Enter'){document.getElementById('dictValInput').focus();}">
+        <span class="dict-arrow">&rarr;</span>
+        <input type="text" id="dictValInput" placeholder="올바른 표기"
+               onkeydown="if(event.key==='Enter') addDictEntry()">
+        <button class="btn-dict" onclick="addDictEntry()">추가</button>
+      </div>
+
+      <!-- 현재 사전 미리보기 -->
+      <div class="dict-list-header">
+        <span class="dict-list-label" id="dictListToggle" onclick="toggleDictList()">
+          등록 항목 보기
+        </span>
+        <div class="dict-actions">
+          <button class="btn-dict" onclick="exportDict()">내보내기</button>
+          <button class="btn-dict btn-dict-danger" onclick="clearDict()">초기화</button>
+        </div>
+      </div>
+      <div class="dict-entries" id="dictEntries"></div>
+    </div>
+  </section>
 
   <!-- 1단계: 텍스트 입력 -->
   <section class="input-section" id="inputSection">
@@ -511,6 +854,225 @@
   let candidates = [];
   let addedWords = [];
 
+  // ─── 자체 사전 (Custom Dictionary) ───────────────────────────
+
+  // localStorage에서 사전 불러오기
+  function getCustomDict() {
+    try {
+      return JSON.parse(localStorage.getItem('foreignNameDict') || '{}');
+    } catch {
+      return {};
+    }
+  }
+
+  // 사전 저장
+  function saveCustomDict(dict) {
+    localStorage.setItem('foreignNameDict', JSON.stringify(dict));
+    updateDictCountLabel();
+  }
+
+  // 사전 항목 수 라벨 업데이트
+  function updateDictCountLabel() {
+    const dict = getCustomDict();
+    const count = Object.keys(dict).length;
+    document.getElementById('dictCountLabel').textContent = `(${count}개)`;
+  }
+
+  // 패널 토글
+  function toggleDictPanel() {
+    const toggle = document.getElementById('dictToggle');
+    const panel = document.getElementById('dictPanel');
+    toggle.classList.toggle('open');
+    panel.classList.toggle('open');
+  }
+
+  // 사전 목록 토글
+  function toggleDictList() {
+    const entries = document.getElementById('dictEntries');
+    entries.classList.toggle('open');
+    if (entries.classList.contains('open')) {
+      renderDictEntries();
+    }
+  }
+
+  // 사전 항목 렌더링
+  function renderDictEntries() {
+    const dict = getCustomDict();
+    const el = document.getElementById('dictEntries');
+    const keys = Object.keys(dict);
+
+    if (keys.length === 0) {
+      el.innerHTML = '<div style="padding:16px;text-align:center;font-family:JetBrains Mono,monospace;font-size:12px;color:var(--text-light);">등록된 항목이 없습니다</div>';
+      return;
+    }
+
+    el.innerHTML = keys.map(k => `
+      <div class="dict-entry">
+        <span class="dict-entry-key">${k}</span>
+        <span class="dict-entry-arrow">&rarr;</span>
+        <span class="dict-entry-value">${dict[k]}</span>
+        <button class="dict-entry-del" onclick="deleteDictEntry('${k.replace(/'/g, "\\'")}')" title="삭제">&times;</button>
+      </div>
+    `).join('');
+  }
+
+  // 직접 입력으로 사전 항목 추가
+  function addDictEntry() {
+    const keyInput = document.getElementById('dictKeyInput');
+    const valInput = document.getElementById('dictValInput');
+    const key = keyInput.value.trim();
+    const val = valInput.value.trim();
+    if (!key || !val) return;
+
+    const dict = getCustomDict();
+    dict[key] = val;
+    saveCustomDict(dict);
+
+    keyInput.value = '';
+    valInput.value = '';
+    keyInput.focus();
+
+    // 목록이 열려있으면 갱신
+    if (document.getElementById('dictEntries').classList.contains('open')) {
+      renderDictEntries();
+    }
+  }
+
+  // 사전 항목 삭제
+  function deleteDictEntry(key) {
+    const dict = getCustomDict();
+    delete dict[key];
+    saveCustomDict(dict);
+    renderDictEntries();
+  }
+
+  // 사전 내보내기 (JSON 다운로드)
+  function exportDict() {
+    const dict = getCustomDict();
+    const blob = new Blob([JSON.stringify(dict, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'foreign-name-dict.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // 사전 초기화
+  function clearDict() {
+    if (!confirm('자체 사전의 모든 항목을 삭제할까?')) return;
+    saveCustomDict({});
+    if (document.getElementById('dictEntries').classList.contains('open')) {
+      renderDictEntries();
+    }
+  }
+
+  // 결과에서 사전에 추가
+  function addToDict(key, value, btnEl) {
+    const dict = getCustomDict();
+    dict[key] = value;
+    saveCustomDict(dict);
+    btnEl.textContent = '추가됨';
+    btnEl.classList.add('added');
+    btnEl.onclick = null;
+
+    // 열려있는 사전 목록 갱신
+    if (document.getElementById('dictEntries').classList.contains('open')) {
+      renderDictEntries();
+    }
+  }
+
+  // ─── 파일 업로드 (드래그앤드롭 + 파일 선택) ──────────────────
+
+  function initDictUpload() {
+    const area = document.getElementById('dictUploadArea');
+    const input = document.getElementById('dictFileInput');
+
+    // 드래그앤드롭
+    area.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      area.classList.add('dragover');
+    });
+
+    area.addEventListener('dragleave', () => {
+      area.classList.remove('dragover');
+    });
+
+    area.addEventListener('drop', (e) => {
+      e.preventDefault();
+      area.classList.remove('dragover');
+      if (e.dataTransfer.files.length) {
+        handleDictFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    // 파일 선택
+    input.addEventListener('change', () => {
+      if (input.files.length) {
+        handleDictFile(input.files[0]);
+        input.value = ''; // 같은 파일 재업로드 가능하게
+      }
+    });
+  }
+
+  function handleDictFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      const dict = getCustomDict();
+      let added = 0;
+
+      if (file.name.endsWith('.json')) {
+        // JSON 파싱
+        try {
+          const data = JSON.parse(content);
+          for (const [k, v] of Object.entries(data)) {
+            if (typeof v === 'string') {
+              dict[k.trim()] = v.trim();
+              added++;
+            }
+          }
+        } catch {
+          alert('JSON 파일 형식이 올바르지 않아.');
+          return;
+        }
+      } else {
+        // CSV 파싱
+        const lines = content.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          const parts = trimmed.split(',');
+          if (parts.length >= 2) {
+            const key = parts[0].trim();
+            const val = parts[1].trim();
+            if (key && val) {
+              dict[key] = val;
+              added++;
+            }
+          }
+        }
+      }
+
+      saveCustomDict(dict);
+      alert(`${added}개 항목이 추가됐어.`);
+
+      if (document.getElementById('dictEntries').classList.contains('open')) {
+        renderDictEntries();
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ─── 페이지 로드 시 초기화 ──────────────────────────────────
+
+  document.addEventListener('DOMContentLoaded', () => {
+    updateDictCountLabel();
+    initDictUpload();
+  });
+
+  // ─── 기존 기능 ──────────────────────────────────────────────
+
   async function extractCandidates() {
     const text = document.getElementById('textInput').value.trim();
     if (!text) return;
@@ -530,7 +1092,7 @@
       addedWords = [];
 
       if (candidates.length === 0) {
-        // 후보 없음 → 안내 표시
+        // 후보 없음 -> 안내 표시
         document.getElementById('emptyNotice').classList.add('visible');
       } else {
         renderCandidates();
@@ -615,7 +1177,7 @@
       const resp = await fetch('/api/check', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({words: selected})
+        body: JSON.stringify({words: selected, custom_dict: getCustomDict()})
       });
       const data = await resp.json();
       renderResults(data.results);
@@ -629,18 +1191,29 @@
 
   function renderResults(results) {
     const list = document.getElementById('resultsList');
-    let correct = 0, check = 0, notfound = 0;
+    let correct = 0, check = 0, notfound = 0, customCorrect = 0, customFix = 0, typo = 0;
 
-    const html = results.map(r => {
+    const html = results.map((r, idx) => {
+      // 사전 추가 버튼 HTML 생성
+      const dictBtnId = `dictBtn${idx}`;
+      let addDictBtnHtml = '';
+
       if (r.status === 'correct') {
         correct++;
+        // 올바른 표기 -> key=value 동일하게 사전에 추가
+        addDictBtnHtml = `<button class="btn-add-dict" id="${dictBtnId}" onclick="addToDict('${r.word.replace(/'/g,"\\'")}','${r.word.replace(/'/g,"\\'")}',this)">사전에 추가</button>`;
         return `
           <div class="result-item result-correct">
-            <div class="result-word">${r.word}</div>
-            <span class="result-status status-correct">올바른 표기</span>
-            <div class="result-meta">
-              원어 ${r.original || '—'}<br>
-              ${r.country || ''}${r.language ? ' / ' + r.language : ''}${r.category ? ' / ' + r.category : ''}
+            <div class="result-header">
+              <div class="result-header-left">
+                <div class="result-word">${r.word}</div>
+                <span class="result-status status-correct">올바른 표기</span>
+                <div class="result-meta">
+                  원어 ${r.original || '—'}<br>
+                  ${r.country || ''}${r.language ? ' / ' + r.language : ''}${r.category ? ' / ' + r.category : ''}
+                </div>
+              </div>
+              ${addDictBtnHtml}
             </div>
           </div>`;
       } else if (r.status === 'check') {
@@ -650,33 +1223,121 @@
             <span class="suggestion-word">${s.korean}</span>
             <span class="result-meta"> — ${s.original || ''}${s.country ? ', ' + s.country : ''}${s.language ? ' / ' + s.language : ''}</span>
           </div>`).join('');
+        // 확인 필요 -> 첫 번째 권장 표기를 value로
+        const suggestedWord = (r.suggestions && r.suggestions.length > 0) ? r.suggestions[0].korean : r.word;
+        addDictBtnHtml = `<button class="btn-add-dict" id="${dictBtnId}" onclick="addToDict('${r.word.replace(/'/g,"\\'")}','${suggestedWord.replace(/'/g,"\\'")}',this)">사전에 추가</button>`;
         return `
           <div class="result-item result-check">
-            <div class="result-word">${r.word}</div>
-            <span class="result-status status-check">확인 필요</span>
+            <div class="result-header">
+              <div class="result-header-left">
+                <div class="result-word">${r.word}</div>
+                <span class="result-status status-check">확인 필요</span>
+              </div>
+              ${addDictBtnHtml}
+            </div>
             ${suggestions}
+          </div>`;
+      } else if (r.status === 'custom_correct') {
+        customCorrect++;
+        return `
+          <div class="result-item result-custom-correct">
+            <div class="result-header">
+              <div class="result-header-left">
+                <div class="result-word">${r.word}</div>
+                <span class="result-status status-custom">자체 사전: 올바른 표기</span>
+                <div class="result-meta">${r.source || ''}</div>
+              </div>
+            </div>
+          </div>`;
+      } else if (r.status === 'custom_fix') {
+        customFix++;
+        return `
+          <div class="result-item result-custom-fix">
+            <div class="result-header">
+              <div class="result-header-left">
+                <div class="result-word">${r.word}</div>
+                <span class="result-status status-custom">자체 사전: 교정 필요</span>
+                <div class="suggestion" style="margin-top:8px">
+                  <span class="suggestion-word">${r.correction || ''}</span>
+                  <span class="result-meta"> — ${r.source || '자체 사전'} 기준 권장 표기</span>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      } else if (r.status === 'typo_candidate') {
+        typo++;
+        const firstSimilar = (r.similar && r.similar.length > 0) ? r.similar[0].word : r.word;
+        addDictBtnHtml = `<button class="btn-add-dict" id="${dictBtnId}" onclick="addToDict('${r.word.replace(/'/g,"\\'")}','${firstSimilar.replace(/'/g,"\\'")}',this)">사전에 추가</button>`;
+        const similars = (r.similar || []).map(s => `
+          <div class="suggestion">
+            <span class="typo-similar">${s.word}</span>
+            <span class="result-meta"> — 편집 거리 ${s.distance}, ${s.source}</span>
+          </div>`).join('');
+        return `
+          <div class="result-item result-typo">
+            <div class="result-header">
+              <div class="result-header-left">
+                <div class="result-word">${r.word}</div>
+                <span class="result-status status-typo">오타 의심</span>
+              </div>
+              ${addDictBtnHtml}
+            </div>
+            ${similars}
+          </div>`;
+      } else if (r.status === 'no_api_key') {
+        notfound++;
+        addDictBtnHtml = `<button class="btn-add-dict" id="${dictBtnId}" onclick="promptAddToDict('${r.word.replace(/'/g,"\\'")}',this)">사전에 추가</button>`;
+        return `
+          <div class="result-item result-notfound">
+            <div class="result-header">
+              <div class="result-header-left">
+                <div class="result-word">${r.word}</div>
+                <span class="result-status status-notfound">API 키 미설정</span>
+                <div class="result-meta">국립국어원 API 키가 없어 검사할 수 없음 (.env 파일 확인)</div>
+              </div>
+              ${addDictBtnHtml}
+            </div>
           </div>`;
       } else {
         notfound++;
+        addDictBtnHtml = `<button class="btn-add-dict" id="${dictBtnId}" onclick="promptAddToDict('${r.word.replace(/'/g,"\\'")}',this)">사전에 추가</button>`;
         return `
           <div class="result-item result-notfound">
-            <div class="result-word">${r.word}</div>
-            <span class="result-status status-notfound">용례 없음</span>
-            <div class="result-meta">국립국어원에 등록되지 않은 표기</div>
+            <div class="result-header">
+              <div class="result-header-left">
+                <div class="result-word">${r.word}</div>
+                <span class="result-status status-notfound">용례 없음</span>
+                <div class="result-meta">국립국어원에 등록되지 않은 표기</div>
+              </div>
+              ${addDictBtnHtml}
+            </div>
           </div>`;
       }
     }).join('');
 
     list.innerHTML = html;
 
+    // 요약 (존재하는 카테고리만 표시)
+    const summaryParts = [];
+    if (correct) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-correct"></div> 올바름 ${correct}</div>`);
+    if (customCorrect) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-custom"></div> 사전일치 ${customCorrect}</div>`);
+    if (check) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-check"></div> 확인필요 ${check}</div>`);
+    if (customFix) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-custom"></div> 사전교정 ${customFix}</div>`);
+    if (typo) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-typo"></div> 오타의심 ${typo}</div>`);
+    if (notfound) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-notfound"></div> 용례없음 ${notfound}</div>`);
+
     document.getElementById('summaryBox').innerHTML = `
-      <div class="summary">
-        <div class="summary-item"><div class="summary-dot dot-correct"></div> 올바름 ${correct}</div>
-        <div class="summary-item"><div class="summary-dot dot-check"></div> 확인필요 ${check}</div>
-        <div class="summary-item"><div class="summary-dot dot-notfound"></div> 용례없음 ${notfound}</div>
-      </div>`;
+      <div class="summary">${summaryParts.join('')}</div>`;
 
     document.getElementById('resultsSection').classList.add('visible');
+  }
+
+  // 용례 없음에서 사전 추가 (올바른 표기를 직접 입력받기)
+  function promptAddToDict(word, btnEl) {
+    const value = prompt(`"${word}"의 올바른 표기를 입력해줘.\n(같은 표기가 맞으면 그대로 입력)`, word);
+    if (value !== null && value.trim()) {
+      addToDict(word, value.trim(), btnEl);
+    }
   }
 
   // 후보 없을 때 직접 추가 기능
@@ -706,7 +1367,7 @@
       const resp = await fetch('/api/check', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({words: emptyAddedWords})
+        body: JSON.stringify({words: emptyAddedWords, custom_dict: getCustomDict()})
       });
       const data = await resp.json();
       renderResults(data.results);
