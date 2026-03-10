@@ -123,11 +123,11 @@ def extract_candidates(text):
                 break
             foreign_words.insert(0, w)
         if foreign_words:
-            korean_name = " ".join(foreign_words)
+            for w in foreign_words:
+                if len(w) >= 2:
+                    candidates.add(w)
         else:
             continue  # 외래어 부분이 없으면 스킵
-        if len(korean_name.replace(" ", "")) >= 2:
-            candidates.add(korean_name)
 
     # kiwipiepy 형태소 분석
     result = kiwi.analyze(text)
@@ -154,10 +154,16 @@ def extract_candidates(text):
                     break
             merged = "".join(parts)
             i = j
-            clean = merged.replace(" ", "")
-            if len(clean) >= 2 and all('가' <= ch <= '힣' for ch in clean):
-                if not _is_likely_korean_phrase(merged):
-                    candidates.add(merged)
+            if " " in merged:
+                for part in merged.split():
+                    if len(part) >= 2 and all('가' <= ch <= '힣' for ch in part):
+                        if not _is_likely_korean_phrase(part):
+                            candidates.add(part)
+            else:
+                clean = merged.replace(" ", "")
+                if len(clean) >= 2 and all('가' <= ch <= '힣' for ch in clean):
+                    if not _is_likely_korean_phrase(merged):
+                        candidates.add(merged)
         else:
             i += 1
 
