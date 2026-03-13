@@ -94,7 +94,7 @@ def detect_language(text):
         return 'pt'
     if any(c in t for c in 'éèêëàâîïôûùüçœæ'):
         return 'fr'
-    return None  # 알파벳만으로는 언어 특정 불가
+    return 'en'  # 특수 문자 없으면 영어로 간주
 
 
 # ── 영어 표기법 ─────────────────────────────────────────────────
