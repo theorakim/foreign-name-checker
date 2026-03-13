@@ -6,10 +6,14 @@ Flask 백엔드 + 프론트엔드
 import os
 import re
 import time
+import logging
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from kiwipiepy import Kiwi
+
+logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
@@ -503,20 +507,42 @@ def api_extract():
 
 @app.route("/api/check", methods=["POST"])
 def api_check():
-    """선택된 단어들을 검사"""
-    words = request.json.get("words", [])
-    custom_dict = request.json.get("custom_dict", {})
-    results = []
-    checked = set()
-    for word in words:
-        clean = word.replace(" ", "")
-        if clean in checked:
-            continue
-        checked.add(clean)
-        result = check_word(word, custom_dict if custom_dict else None)
-        results.append(result)
-        time.sleep(0.15)
-    return jsonify({"results": results})
+    """선택된 단어들을 병렬로 검사"""
+    try:
+        words = request.json.get("words", [])
+        custom_dict = request.json.get("custom_dict", {}) or None
+
+        # 중복 제거 (순서 유지)
+        seen = set()
+        unique_words = []
+        for w in words:
+            clean = w.replace(" ", "")
+            if clean not in seen:
+                seen.add(clean)
+                unique_words.append(w)
+
+        results_map = {}
+        # 최대 5개 스레드로 병렬 검사
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_word = {
+                executor.submit(check_word, w, custom_dict): w
+                for w in unique_words
+            }
+            for future in as_completed(future_to_word):
+                word = future_to_word[future]
+                try:
+                    results_map[word] = future.result()
+                except Exception as e:
+                    logging.error(f"check_word 오류 ({word}): {e}")
+                    results_map[word] = {"word": word, "status": "error"}
+
+        # 원래 순서로 정렬해서 반환
+        results = [results_map[w] for w in unique_words]
+        return jsonify({"results": results})
+
+    except Exception as e:
+        logging.error(f"api_check 오류: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":

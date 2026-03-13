@@ -1180,9 +1180,10 @@
         body: JSON.stringify({words: selected, custom_dict: getCustomDict()})
       });
       const data = await resp.json();
+      if (data.error) throw new Error(data.error);
       renderResults(data.results);
     } catch (e) {
-      alert('검사 중 오류가 발생했어.');
+      alert('검사 중 오류가 발생했어.\n\n' + (e.message || '서버 응답 없음'));
       document.getElementById('candidatesSection').classList.add('visible');
     } finally {
       document.getElementById('loading').classList.remove('visible');
