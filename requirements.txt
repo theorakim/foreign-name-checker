@@ -3,3 +3,4 @@ kiwipiepy
 requests
 python-dotenv
 gunicorn
+anthropic
