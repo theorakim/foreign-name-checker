@@ -1314,14 +1314,21 @@
         let suggestionHtml = '';
         if (r.transcription_suggestion) {
           const ts = r.transcription_suggestion;
-          const rulesHtml = (ts.rules || []).map(rule => `<li>${rule}</li>`).join('');
-          suggestionHtml = `
-            <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${ts.language_name || ''}${ts.section ? ' ' + ts.section : ''} 표기법 기반 제안</div>
-              <span class="suggestion-word">${ts.transcription}</span>
-              ${rulesHtml ? `<ul style="margin-top:6px;padding-left:16px;font-size:12px;color:var(--text-muted);line-height:1.6;">${rulesHtml}</ul>` : ''}
-              ${ts.note ? `<div style="font-size:11px;color:var(--text-light);margin-top:4px;">${ts.note}</div>` : ''}
-            </div>`;
+          if (ts.transcription) {
+            const rulesHtml = (ts.rules || []).map(rule => `<li>${rule}</li>`).join('');
+            suggestionHtml = `
+              <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${ts.language_name || ''}${ts.section ? ' ' + ts.section : ''} 표기법 기반 제안</div>
+                <span class="suggestion-word">${ts.transcription}</span>
+                ${rulesHtml ? `<ul style="margin-top:6px;padding-left:16px;font-size:12px;color:var(--text-muted);line-height:1.6;">${rulesHtml}</ul>` : ''}
+                ${ts.note ? `<div style="font-size:11px;color:var(--text-light);margin-top:4px;">${ts.note}</div>` : ''}
+              </div>`;
+          } else if (ts.note) {
+            suggestionHtml = `
+              <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
+                <div style="font-size:12px;color:var(--text-muted);">${ts.note}</div>
+              </div>`;
+          }
         }
         return `
           <div class="result-item result-notfound">

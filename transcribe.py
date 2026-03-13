@@ -84,6 +84,7 @@ def _assemble(segments):
 # ── 언어 감지 ────────────────────────────────────────────────────
 
 def detect_language(text):
+    """특수 문자 기반 언어 감지. 확인 불가능하면 None 반환."""
     t = text.lower()
     if any(c in t for c in 'äöüß'):
         return 'de'
@@ -93,7 +94,7 @@ def detect_language(text):
         return 'pt'
     if any(c in t for c in 'éèêëàâîïôûùüçœæ'):
         return 'fr'
-    return 'en'
+    return None  # 알파벳만으로는 언어 특정 불가
 
 
 # ── 영어 표기법 ─────────────────────────────────────────────────
@@ -660,8 +661,31 @@ def suggest(original, language=None):
         'de': _transcribe_german,
         'es': _transcribe_spanish,
     }
-    fn = fn_map.get(lang, _transcribe_english)
 
+    # 언어 감지 실패
+    if lang is None:
+        return {
+            'transcription': None,
+            'rules': [],
+            'language': None,
+            'language_name': None,
+            'section': None,
+            'note': '언어를 특정할 수 없어 표기 제안을 드릴 수 없습니다.',
+        }
+
+    # 언어는 감지됐지만 표기법 규칙 미구현
+    if lang not in fn_map:
+        lang_name = _LANG_NAMES.get(lang, lang)
+        return {
+            'transcription': None,
+            'rules': [],
+            'language': lang,
+            'language_name': lang_name,
+            'section': None,
+            'note': f'{lang_name} 표기법 규칙이 구현되지 않아 표기 제안을 드릴 수 없습니다.',
+        }
+
+    fn = fn_map[lang]
     parts = original.split()
     trans_parts, all_rules = [], []
     for part in parts:
@@ -670,9 +694,6 @@ def suggest(original, language=None):
         for rule in r:
             if rule not in all_rules:
                 all_rules.append(rule)
-
-    if lang not in fn_map:
-        all_rules.insert(0, f'※ {lang} 미지원 — 영어 규칙으로 대체 적용')
 
     return {
         'transcription': ' '.join(trans_parts),
