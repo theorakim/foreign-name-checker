@@ -1110,12 +1110,15 @@
     const list = document.getElementById('candidateList');
     const all = [...candidates, ...addedWords];
 
-    list.innerHTML = all.map((word, i) => {
+    list.innerHTML = all.map((entry, i) => {
+      const word = typeof entry === 'string' ? entry : entry.word;
+      const orig = typeof entry === 'string' ? '' : (entry.original || '');
       const isChecked = prevStates ? (prevStates[word] !== false) : true;
+      const isAdded = i >= candidates.length;
       return `
       <div class="candidate-item">
         <input type="checkbox" id="cb${i}" ${isChecked ? 'checked' : ''} onchange="event.stopPropagation()">
-        <label for="cb${i}">${word}${i >= candidates.length ? ' <span style="color:var(--accent);font-size:11px;font-family:JetBrains Mono,monospace;">직접 추가</span>' : ''}</label>
+        <label for="cb${i}">${word}${orig ? ` <span style="color:var(--text-muted);font-size:11px;font-family:JetBrains Mono,monospace;">(${orig})</span>` : ''}${isAdded ? ' <span style="color:var(--accent);font-size:11px;font-family:JetBrains Mono,monospace;">직접 추가</span>' : ''}</label>
       </div>`;
     }).join('');
 
@@ -1142,7 +1145,8 @@
   function saveCheckStates() {
     const all = [...candidates, ...addedWords];
     const states = {};
-    all.forEach((word, i) => {
+    all.forEach((entry, i) => {
+      const word = typeof entry === 'string' ? entry : entry.word;
       const cb = document.getElementById('cb' + i);
       if (cb) states[word] = cb.checked;
     });
@@ -1168,6 +1172,11 @@
       return;
     }
 
+    // {word, original} 형태로 변환
+    const wordsPayload = selected.map(entry =>
+      typeof entry === 'string' ? {word: entry, original: ''} : {word: entry.word, original: entry.original || ''}
+    );
+
     document.getElementById('candidatesSection').classList.remove('visible');
     document.getElementById('loading').classList.add('visible');
     document.getElementById('loadingText').textContent =
@@ -1177,7 +1186,7 @@
       const resp = await fetch('/api/check', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({words: selected, custom_dict: getCustomDict()})
+        body: JSON.stringify({words: wordsPayload, custom_dict: getCustomDict()})
       });
       const data = await resp.json();
       if (data.error) throw new Error(data.error);
@@ -1302,6 +1311,18 @@
       } else {
         notfound++;
         addDictBtnHtml = `<button class="btn-add-dict" id="${dictBtnId}" onclick="promptAddToDict('${r.word.replace(/'/g,"\\'")}',this)">사전에 추가</button>`;
+        let suggestionHtml = '';
+        if (r.transcription_suggestion) {
+          const ts = r.transcription_suggestion;
+          const rulesHtml = (ts.rules || []).map(rule => `<li>${rule}</li>`).join('');
+          suggestionHtml = `
+            <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${ts.language_name || ''}${ts.section ? ' ' + ts.section : ''} 표기법 기반 제안</div>
+              <span class="suggestion-word">${ts.transcription}</span>
+              ${rulesHtml ? `<ul style="margin-top:6px;padding-left:16px;font-size:12px;color:var(--text-muted);line-height:1.6;">${rulesHtml}</ul>` : ''}
+              ${ts.note ? `<div style="font-size:11px;color:var(--text-light);margin-top:4px;">${ts.note}</div>` : ''}
+            </div>`;
+        }
         return `
           <div class="result-item result-notfound">
             <div class="result-header">
@@ -1312,6 +1333,7 @@
               </div>
               ${addDictBtnHtml}
             </div>
+            ${suggestionHtml}
           </div>`;
       }
     }).join('');
