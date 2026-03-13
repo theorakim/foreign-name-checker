@@ -5,7 +5,6 @@ Flask 백엔드 + 프론트엔드
 
 import os
 import re
-import json
 import time
 import logging
 import requests
@@ -13,7 +12,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from kiwipiepy import Kiwi
-import anthropic
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,15 +21,6 @@ app = Flask(__name__)
 
 API_KEY = os.getenv("KORNORMS_API_KEY")
 API_URL = "https://korean.go.kr/kornorms/exampleReqList.do"
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-
-_claude_client = None
-
-def _get_claude():
-    global _claude_client
-    if _claude_client is None and ANTHROPIC_API_KEY:
-        _claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    return _claude_client
 
 kiwi = Kiwi()
 
@@ -370,42 +359,6 @@ def is_chinese(item):
     return False
 
 
-_CLAUDE_SYSTEM = """당신은 국립국어원 외래어 표기법 및 외래어 표기 용례집 전문가입니다.
-단어 하나의 표기가 올바른지 판단하세요.
-
-【최우선 원칙】
-- 국립국어원 외래어 표기 용례집에 등재된 표기가 있으면 반드시 그것을 기준으로 삼으세요.
-- 용례집 등재 표기가 규칙 추론이나 언론 사용례보다 항상 우선입니다.
-
-【판단 기준】
-1. 용례집 등재 표기와 일치 → "correct"
-2. 용례집에 등재되어 있으나 표기가 다름 → "wrong", 용례집 등재 표기를 suggested로 제시
-3. 용례집 미등재 → 외래어 표기법 규정(언어권별 세칙)을 적용해 판단, status는 "unknown"
-
-순수 JSON 객체만 반환하세요 (마크다운 없이):
-{"status":"correct|wrong|unknown","suggested":"올바른표기또는null","reason":"한국어 근거","basis":"용례집 등재 여부 또는 외래어 표기법 몇 장 몇 항"}"""
-
-
-def claude_check(word):
-    """국립국어원 용례에 없는 단어를 Claude로 판단."""
-    client = _get_claude()
-    if not client:
-        return None
-    try:
-        msg = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=300,
-            system=_CLAUDE_SYSTEM,
-            messages=[{"role": "user", "content": f'단어: "{word}"'}],
-        )
-        raw = msg.content[0].text.strip()
-        raw = re.sub(r"```json|```", "", raw).strip()
-        return json.loads(raw)
-    except Exception as e:
-        logging.error(f"claude_check 오류 ({word}): {e}")
-        return None
-
-
 def check_word(word, custom_dict=None):
     """단어 하나를 검사해서 결과를 반환한다."""
     clean = word.replace(" ", "")
@@ -533,18 +486,6 @@ def check_word(word, custom_dict=None):
     # API 키가 없으면 구분해서 알려줌
     if not API_KEY:
         return {"word": word, "status": "no_api_key"}
-
-    # 국립국어원 용례 없음 → Claude로 판단
-    claude_result = claude_check(word)
-    if claude_result:
-        status = claude_result.get("status", "unknown")
-        return {
-            "word": word,
-            "status": "claude_" + status,      # claude_correct / claude_wrong / claude_unknown
-            "suggested": claude_result.get("suggested"),
-            "reason": claude_result.get("reason"),
-            "basis": claude_result.get("basis"),
-        }
 
     return {"word": word, "status": "not_found"}
 

@@ -1192,7 +1192,7 @@
 
   function renderResults(results) {
     const list = document.getElementById('resultsList');
-    let correct = 0, check = 0, notfound = 0, customCorrect = 0, customFix = 0, typo = 0, claudeCorrect = 0, claudeWrong = 0, claudeUnknown = 0;
+    let correct = 0, check = 0, notfound = 0, customCorrect = 0, customFix = 0, typo = 0;
 
     const html = results.map((r, idx) => {
       // 사전 추가 버튼 HTML 생성
@@ -1285,50 +1285,6 @@
             </div>
             ${similars}
           </div>`;
-      } else if (r.status === 'claude_correct') {
-        claudeCorrect++;
-        addDictBtnHtml = `<button class="btn-add-dict" id="${dictBtnId}" onclick="addToDict('${r.word.replace(/'/g,"\\'")}','${r.word.replace(/'/g,"\\'")}',this)">사전에 추가</button>`;
-        return `
-          <div class="result-item result-correct">
-            <div class="result-header">
-              <div class="result-header-left">
-                <div class="result-word">${r.word}</div>
-                <span class="result-status status-correct">올바른 표기 <span style="font-size:10px;opacity:.7;">AI</span></span>
-                ${r.reason ? `<div class="result-meta">${r.reason}${r.basis ? '<br>' + r.basis : ''}</div>` : ''}
-              </div>
-              ${addDictBtnHtml}
-            </div>
-          </div>`;
-      } else if (r.status === 'claude_wrong') {
-        claudeWrong++;
-        const sug = r.suggested || '';
-        addDictBtnHtml = sug ? `<button class="btn-add-dict" id="${dictBtnId}" onclick="addToDict('${r.word.replace(/'/g,"\\'")}','${sug.replace(/'/g,"\\'")}',this)">사전에 추가</button>` : '';
-        return `
-          <div class="result-item result-check">
-            <div class="result-header">
-              <div class="result-header-left">
-                <div class="result-word">${r.word}</div>
-                <span class="result-status status-check">수정 권장 <span style="font-size:10px;opacity:.7;">AI</span></span>
-                ${r.reason ? `<div class="result-meta">${r.reason}${r.basis ? '<br>' + r.basis : ''}</div>` : ''}
-              </div>
-              ${addDictBtnHtml}
-            </div>
-            ${sug ? `<div class="suggestion"><span class="suggestion-word">${sug}</span></div>` : ''}
-          </div>`;
-      } else if (r.status === 'claude_unknown') {
-        claudeUnknown++;
-        addDictBtnHtml = `<button class="btn-add-dict" id="${dictBtnId}" onclick="promptAddToDict('${r.word.replace(/'/g,"\\'")}',this)">사전에 추가</button>`;
-        return `
-          <div class="result-item result-notfound">
-            <div class="result-header">
-              <div class="result-header-left">
-                <div class="result-word">${r.word}</div>
-                <span class="result-status status-notfound">용례 없음 <span style="font-size:10px;opacity:.7;">AI</span></span>
-                ${r.reason ? `<div class="result-meta">${r.reason}${r.basis ? '<br>' + r.basis : ''}</div>` : ''}
-              </div>
-              ${addDictBtnHtml}
-            </div>
-          </div>`;
       } else if (r.status === 'no_api_key') {
         notfound++;
         addDictBtnHtml = `<button class="btn-add-dict" id="${dictBtnId}" onclick="promptAddToDict('${r.word.replace(/'/g,"\\'")}',this)">사전에 추가</button>`;
@@ -1365,13 +1321,10 @@
     // 요약 (존재하는 카테고리만 표시)
     const summaryParts = [];
     if (correct) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-correct"></div> 올바름 ${correct}</div>`);
-    if (claudeCorrect) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-correct"></div> 올바름(AI) ${claudeCorrect}</div>`);
     if (customCorrect) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-custom"></div> 사전일치 ${customCorrect}</div>`);
     if (check) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-check"></div> 확인필요 ${check}</div>`);
-    if (claudeWrong) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-check"></div> 수정권장(AI) ${claudeWrong}</div>`);
     if (customFix) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-custom"></div> 사전교정 ${customFix}</div>`);
     if (typo) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-typo"></div> 오타의심 ${typo}</div>`);
-    if (claudeUnknown) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-notfound"></div> 용례없음(AI) ${claudeUnknown}</div>`);
     if (notfound) summaryParts.push(`<div class="summary-item"><div class="summary-dot dot-notfound"></div> 용례없음 ${notfound}</div>`);
 
     document.getElementById('summaryBox').innerHTML = `
