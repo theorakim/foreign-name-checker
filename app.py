@@ -12,7 +12,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from kiwipiepy import Kiwi
-from transcribe import suggest as transcribe_suggest
 
 logging.basicConfig(level=logging.INFO)
 
@@ -112,9 +111,8 @@ def _is_likely_korean_phrase(text):
 
 
 def extract_candidates(text):
-    """텍스트에서 외래어 후보를 추출한다. 원어 철자도 같이 반환."""
+    """텍스트에서 외래어 후보를 추출한다."""
     candidates = set()
-    original_map = {}   # korean → original spelling
 
     # 괄호 패턴 — "레오노르 안투네스(Leonor Antunes)" 형태
     paren_pattern = re.compile(r'([가-힣]+(?:\s[가-힣]+){0,3})\s*\(([A-Za-z][\w\s\.\-\']+)\)')
@@ -129,12 +127,9 @@ def extract_candidates(text):
                 break
             foreign_words.insert(0, w)
         if foreign_words:
-            orig_spelling = match.group(2).strip()
             for w in foreign_words:
                 if len(w) >= 2:
                     candidates.add(w)
-                    if orig_spelling and w not in original_map:
-                        original_map[w] = orig_spelling
         else:
             continue  # 외래어 부분이 없으면 스킵
 
@@ -230,7 +225,7 @@ def extract_candidates(text):
                     to_remove.add(j)  # 긴 쪽이 전부 외래어 → 짧은 쪽 제거
 
     deduped = [f for i, f in enumerate(filtered) if i not in to_remove]
-    return deduped, original_map
+    return deduped
 
 
 def search_kornorms(keyword, search_type="equal"):
@@ -364,7 +359,7 @@ def is_chinese(item):
     return False
 
 
-def check_word(word, custom_dict=None, original=''):
+def check_word(word, custom_dict=None):
     """단어 하나를 검사해서 결과를 반환한다."""
     clean = word.replace(" ", "")
 
@@ -492,14 +487,6 @@ def check_word(word, custom_dict=None, original=''):
     if not API_KEY:
         return {"word": word, "status": "no_api_key"}
 
-    # 원어 철자가 있으면 표기법 규칙으로 표기 제안
-    if original:
-        try:
-            suggestion = transcribe_suggest(original)
-            return {"word": word, "status": "not_found", "transcription_suggestion": suggestion}
-        except Exception as e:
-            logging.error(f"transcribe_suggest 오류 ({original}): {e}")
-
     return {"word": word, "status": "not_found"}
 
 
@@ -514,40 +501,32 @@ def api_extract():
     text = request.json.get("text", "")
     if not text.strip():
         return jsonify({"candidates": []})
-    candidates, original_map = extract_candidates(text)
-    result = [{"word": w, "original": original_map.get(w, "")} for w in candidates]
-    return jsonify({"candidates": result})
+    candidates = extract_candidates(text)
+    return jsonify({"candidates": candidates})
 
 
 @app.route("/api/check", methods=["POST"])
 def api_check():
     """선택된 단어들을 병렬로 검사"""
     try:
-        words_raw = request.json.get("words", [])
+        words = request.json.get("words", [])
         custom_dict = request.json.get("custom_dict", {}) or None
-
-        # words는 문자열이거나 {word, original} 객체일 수 있음
-        def parse_entry(entry):
-            if isinstance(entry, dict):
-                return entry.get("word", ""), entry.get("original", "")
-            return entry, ""
 
         # 중복 제거 (순서 유지)
         seen = set()
-        unique_entries = []  # list of (word, original)
-        for entry in words_raw:
-            w, orig = parse_entry(entry)
+        unique_words = []
+        for w in words:
             clean = w.replace(" ", "")
             if clean not in seen:
                 seen.add(clean)
-                unique_entries.append((w, orig))
+                unique_words.append(w)
 
         results_map = {}
         # 최대 5개 스레드로 병렬 검사
         with ThreadPoolExecutor(max_workers=5) as executor:
             future_to_word = {
-                executor.submit(check_word, w, custom_dict, orig): w
-                for w, orig in unique_entries
+                executor.submit(check_word, w, custom_dict): w
+                for w in unique_words
             }
             for future in as_completed(future_to_word):
                 word = future_to_word[future]
@@ -558,7 +537,7 @@ def api_check():
                     results_map[word] = {"word": word, "status": "error"}
 
         # 원래 순서로 정렬해서 반환
-        results = [results_map[w] for w, _ in unique_entries]
+        results = [results_map[w] for w in unique_words]
         return jsonify({"results": results})
 
     except Exception as e:
